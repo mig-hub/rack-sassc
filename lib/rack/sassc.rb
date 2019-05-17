@@ -26,7 +26,7 @@ module Rack
     end
 
     def location dirname
-      ::File.join @opts[:public_location], dirname.to_s
+      ::File.expand_path @opts[:public_location], dirname.to_s
     end
 
     def filepath dirname, filename, ext
