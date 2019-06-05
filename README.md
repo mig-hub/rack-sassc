@@ -11,10 +11,6 @@ The files are processed each time they are requested. Since by default it does
 it only when not in production, the speed penalty is kind of acceptable. But I 
 intend to improve it and use modification time.
 
-The location of the public directory and directory names for CSS and SCSS are 
-editable, but both are assumed to be directly placed inside the public 
-directory.
-
 The files cannot be nested, they are assumed to be directly inside the SCSS 
 directory, and the generated files are therefore created directly inside the CSS 
 directory.
@@ -62,10 +58,9 @@ require 'rack/sassc'
 
 use Rack::SassC, {
   check: ENV['RACK_ENV'] != 'production',
-  public_location: 'public',
   syntax: :scss,
-  css_dirname: :css,
-  scss_dirname: :scss,
+  css_location: 'public/css',
+  scss_location: 'public/scss',
   create_map_file: true,
 }
 ```
@@ -77,11 +72,8 @@ equivalent to not having the middleware at all. By default it is `true` if the
 rack environment is NOT `production`. The value of `check` can also be a Proc 
 which receives the `env` on each request.
 
-`public_location` is where you serve static files on your app. It is set to 
-"public" by default. Whatever path you set it to will be expanded.
-
-`scss_dirname` and `css_dirname` are just the name of the directories in which 
-we search for template files and we generate css/map files.
+`scss_location` and `css_location` are just the name of the directories in which 
+we search for template files and we generate css/map files. These paths are expanded.
 
 `syntax` is `:scss` or `:sass`. It is used for the engine, but also for the 
 extension of template files, which means they have to match.
@@ -105,7 +97,7 @@ The default options for the engine are the following:
 {
   style: :compressed, 
   syntax: @opts[:syntax],
-  load_paths: [location(@opts[:scss_dirname])],
+  load_paths: [@opts[:scss_location]],
 }
 ```
 
@@ -115,11 +107,18 @@ Or this when no map file is to be created:
 {
   style: :compressed, 
   syntax: @opts[:syntax],
-  load_paths: [location(@opts[:scss_dirname])],
+  load_paths: [@opts[:scss_location]],
   source_map_file: "#{filename}.css.map",
   source_map_contents: true,
 }
 ```
+
+Changelog
+---------
+
+**0.0.0** All new
+
+**0.1.0** `:public_location`, `:css_dirname` and `:scss_dirname` 3 options where all replaced by 2 options: `:css_location` and `:scss_location`. Meaning the locations can be outside of the public directory (for scss/sass). They also can be absolute or will be expanded from current directory. The behaviour of default options remains unchanged: css is assumed to be in `'public/css'` and scss in `'public/scss'`. The update is based on a [conversation about a pull request](https://github.com/mig-hub/rack-sassc/pull/1) by [@straight-shoota](https://github.com/straight-shoota).
 
 Alternatives
 ------------

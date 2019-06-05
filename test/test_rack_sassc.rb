@@ -23,8 +23,14 @@ class TestRackSassC < MiniTest::Test
     Dir.children('public/css').each do |f|
       ::File.delete("public/css/#{f}") unless KEEP_IN_CSS_DIR.include?(f)
     end
+    Dir.children('other-public/stylesheets').each do |f|
+      ::File.delete("other-public/stylesheets/#{f}") unless KEEP_IN_CSS_DIR.include?(f)
+    end
     if ::File.exist? "public/scss/tmp.scss"
       ::File.delete "public/scss/tmp.scss"
+    end
+    if ::File.exist? "other-public/sassc/tmp.scss"
+      ::File.delete "other-public/sassc/tmp.scss"
     end
   end
 
@@ -136,35 +142,55 @@ class TestRackSassC < MiniTest::Test
     assert_css_dir_untouched
   end
 
-  def test_public_location_option_is_expanded
-    local_opts = {public_location: 'other-public'}
+  def test_css_location_option_is_expanded
+    local_opts = {css_location: 'other-public/stylesheets'}
     local_app = Rack::SassC.new(inner_app, local_opts)
-    assert_equal ::File.expand_path('other-public'), local_app.opts[:public_location]
+    assert_equal ::File.expand_path('other-public/stylesheets'), local_app.opts[:css_location]
     # Make sure the original opts hash is unchanged
-    assert_equal 'other-public', local_opts[:public_location]
+    assert_equal 'other-public/stylesheets', local_opts[:css_location]
   end
 
-  def test_location_returns_expanded_path_in_public
-    local_opts = {public_location: 'other_public'}
+  def test_scss_location_option_is_expanded
+    local_opts = {scss_location: 'other-public/sassc'}
     local_app = Rack::SassC.new(inner_app, local_opts)
-    assert_equal ::File.join(::File.expand_path('other_public'), 'dir'), local_app.location(:dir)
+    assert_equal ::File.expand_path('other-public/sassc'), local_app.opts[:scss_location]
+    # Make sure the original opts hash is unchanged
+    assert_equal 'other-public/sassc', local_opts[:scss_location]
   end
 
-  def test_filepath_returns_expanded_path_in_public
-    local_opts = {public_location: 'other_public'}
+  def test_filepath
+    local_opts = {
+      css_location: 'other-public/stylesheets', 
+      scss_location: 'other-public/sassc',
+      syntax: :sass
+    }
     local_app = Rack::SassC.new(inner_app, local_opts)
-    assert_equal ::File.join(::File.expand_path('other_public'), 'dir', 'main.sass'), local_app.filepath(:dir, :main, :sass)
+    assert_equal ::File.join(::File.expand_path('other-public/stylesheets'), 'main.css'), local_app.filepath(:main, :css)
+    assert_equal ::File.join(::File.expand_path('other-public/sassc'), 'main.sass'), local_app.filepath(:main, :scss)
   end
 
-  def test_works_with_different_dirnames_and_syntax
+  def test_works_with_different_locations_and_syntax
     @inner_app = inner_app_other
     @app_options = {
-      public_location: 'other-public',
-      css_dirname: :stylesheets,
-      scss_dirname: :sassc,
+      css_location: 'other-public/stylesheets',
+      scss_location: 'other-public/sassc',
       syntax: :sass
     }
     get "/stylesheets/main.css"
+    assert_equal 200, last_response.status
+    assert_equal 'text/css', last_response.headers['Content-Type']
+    assert last_response.body[/body\{color:blue\}/]
+    assert last_response.body[/sourceMappingURL=main\.css\.map/]
+    assert_created_in_css_dir "main.css", "main.css.map"
+  end
+
+  def test_works_with_absolute_paths
+    # @inner_app = inner_app_other
+    @app_options = {
+      scss_location: ::File.expand_path('other-public/sassc'),
+      syntax: :sass
+    }
+    get "/css/main.css"
     assert_equal 200, last_response.status
     assert_equal 'text/css', last_response.headers['Content-Type']
     assert last_response.body[/body\{color:blue\}/]
@@ -179,9 +205,9 @@ class TestRackSassC < MiniTest::Test
   # are not passed as argument. Therefore the list 
   # of files created needs to be exhaustive.
   def assert_created_in_css_dir *created_files
-    if @app_options.has_key?(:public_location) and @app_options.has_key?(:css_dirname)
+    if @app_options.has_key?(:css_location)
       possible_files = created_files.dup
-      path = "#{@app_options[:public_location]}/#{@app_options[:css_dirname]}"
+      path = @app_options[:css_location]
     else
       possible_files = KEEP_IN_CSS_DIR + created_files
       path = 'public/css'

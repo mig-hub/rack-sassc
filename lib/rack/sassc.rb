@@ -10,14 +10,14 @@ module Rack
 
       @opts = {
         check: ENV['RACK_ENV'] != 'production',
-        public_location: 'public',
         syntax: :scss,
-        css_dirname: :css,
-        scss_dirname: :scss,
+        css_location: 'public/css',
+        scss_location: 'public/scss',
         create_map_file: true,
       }.merge(opts)
 
-      @opts[:public_location] = ::File.expand_path @opts[:public_location]
+      @opts[:css_location] = ::File.expand_path @opts[:css_location]
+      @opts[:scss_location] = ::File.expand_path @opts[:scss_location]
     end
 
     def call env
@@ -25,12 +25,10 @@ module Rack
       @app.call env
     end
 
-    def location dirname
-      ::File.join @opts[:public_location], dirname.to_s
-    end
-
-    def filepath dirname, filename, ext
-      ::File.join location(dirname), "#{filename}.#{ext}"
+    def filepath filename, type
+      location = @opts[type==:css ? :css_location : :scss_location]
+      ext = type==:scss ? @opts[:syntax] : type
+      ::File.join location, "#{filename}.#{ext}"
     end
 
     private
@@ -44,15 +42,16 @@ module Rack
     end
 
     def handle_path path_info
-      return unless path_info[/\/#{@opts[:css_dirname]}\/[^\/]+\.css$/]
 
       filename = ::File.basename path_info, '.*'
-      scss_filepath = filepath(@opts[:scss_dirname], filename, @opts[:syntax])
+      scss_filepath = filepath(filename, :scss)
       return unless ::File.exist?(scss_filepath)
+
+      css_filepath = filepath(filename, :css)
+      return unless css_filepath[/#{path_info}/]
 
       scss = ::File.read(scss_filepath)
       engine = ::SassC::Engine.new(scss, build_engine_opts(filename))
-      css_filepath = filepath(@opts[:css_dirname], filename, :css)
 
       ::File.open(css_filepath, 'w') do |css_file|
         css_file.write(engine.render)
@@ -69,7 +68,7 @@ module Rack
       engine_opts = {
         style: :compressed, 
         syntax: @opts[:syntax],
-        load_paths: [location(@opts[:scss_dirname])],
+        load_paths: [@opts[:scss_location]],
       }
 
       if @opts[:create_map_file]
