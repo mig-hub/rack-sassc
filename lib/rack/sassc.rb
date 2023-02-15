@@ -21,6 +21,10 @@ module Rack
     end
 
     def call env
+      dup._call env
+    end
+
+    def _call env
       handle_path(env['PATH_INFO']) if must_check?(env)
       @app.call env
     end
