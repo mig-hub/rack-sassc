@@ -12,10 +12,10 @@ Gem::Specification.new do |s|
   s.license       = 'MIT'
   s.require_paths = ["lib"]
 
-  s.add_dependency 'rack', '>= 1.0'
+  s.add_dependency 'rack', '>= 2.0'
   s.add_dependency 'sassc', '~> 2.0'
   s.add_development_dependency 'minitest', '~> 5.8'
-  s.add_development_dependency 'rack-test', '~> 0.6'
+  s.add_development_dependency 'rack-test', '~> 2'
   s.add_development_dependency "rake"
   s.add_development_dependency "bundler"
 end
