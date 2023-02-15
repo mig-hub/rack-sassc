@@ -23,8 +23,10 @@ class TestRackSassC < MiniTest::Test
     Dir.children('public/css').each do |f|
       ::File.delete("public/css/#{f}") unless KEEP_IN_CSS_DIR.include?(f)
     end
-    Dir.children('other-public/stylesheets').each do |f|
-      ::File.delete("other-public/stylesheets/#{f}") unless KEEP_IN_CSS_DIR.include?(f)
+    if ::File.directory?( 'other-public/stylesheets' )
+      Dir.children('other-public/stylesheets').each do |f|
+        ::File.delete("other-public/stylesheets/#{f}") unless KEEP_IN_CSS_DIR.include?(f)
+      end
     end
     if ::File.exist? "public/scss/tmp.scss"
       ::File.delete "public/scss/tmp.scss"
@@ -206,7 +208,7 @@ class TestRackSassC < MiniTest::Test
   # of files created needs to be exhaustive.
   def assert_created_in_css_dir *created_files
     if @app_options.has_key?(:css_location)
-      possible_files = created_files.dup
+      possible_files = KEEP_IN_CSS_DIR + created_files.dup
       path = @app_options[:css_location]
     else
       possible_files = KEEP_IN_CSS_DIR + created_files
